@@ -17,12 +17,22 @@ from models import (
 def select_winning_outcomes(
     session: Session, winning_outcome_ids: list[int], user_id: int
 ):
-    # - set the event as SETTLED
-    # - set for every outcome whose id is in winning_outcome_ids, set is_winning to true
-    #   and set is_winning for the other outcomes in the same market to false
-    # - take every bet placed on every winning outcome. get the last transaction
-    #   with a negative amount linked to the bet, multiply the amount by the odd and
-    #   create a new transaction with that value
+    """
+    - set the event as SETTLED
+    - set for every outcome whose id is in winning_outcome_ids, set is_winning to true
+      and set is_winning for the other outcomes in the same market to false
+    - take every bet placed on every winning outcome. get the last transaction
+      with a negative amount linked to the bet, multiply the amount by the odd and
+      create a new transaction with that value
+    """
+
+    if _check_multiple_outcomes_same_market(
+        session=session, outcome_id_list=winning_outcome_ids
+    ):
+        raise ForbiddenOperationException(
+            "There are multiple winning outcomes in the same market"
+        )
+
     for outcome_id in winning_outcome_ids:
         outcome_event = _get_outcome_event(session=session, outcome_id=outcome_id)
 
@@ -47,7 +57,7 @@ def _set_event_to_settled(session: Session, outcome_id: int):
     event = _get_outcome_event(session=session, outcome_id=outcome_id)
 
     if event is None:
-        raise NotFoundException()
+        raise NotFoundException("Event relative to the outcome was not found")
 
     event.event_state = EEventState.SETTLED
 
@@ -85,7 +95,7 @@ def _pay_bets(session: Session, outcome_id: int):
         description = _get_payout_transaction_description(session=session, bet=bet)
         transaction = Transaction(
             description=description,
-            amount=payout,
+            amount=int(payout),
             timestamp=int(datetime.now().timestamp()),
             bet_id=bet.id,
             user_id=user_id,
@@ -116,7 +126,7 @@ def _get_user_id_from_bet(session: Session, bet: Bet) -> int:
     ).first()
 
     if user_id is None:
-        raise NotFoundException
+        raise NotFoundException("User was not found")
 
     return user_id
 
@@ -143,3 +153,21 @@ def _get_outcome_event(session: Session, outcome_id: int):
     ).first()
 
     return event
+
+
+def _check_multiple_outcomes_same_market(session: Session, outcome_id_list: list[int]):
+    for outcome_id in outcome_id_list:
+        market = session.exec(
+            select(Market).join(Outcome).where(Outcome.id == outcome_id)
+        ).first()
+
+        if market is None:
+            raise NotFoundException("Market not found")
+
+        market_outcome_id_set = set(map(lambda out: out.id, market.outcomes))
+        common_elements = set(outcome_id_list).intersection(market_outcome_id_set)
+
+        if len(common_elements) > 1:
+            return True
+
+    return False

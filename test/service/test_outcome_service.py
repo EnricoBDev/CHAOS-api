@@ -34,6 +34,16 @@ def test_select_winning_outcome_user_not_creator(mock_session_db: Session):
         )
 
 
+def test_select_winning_outcome_multiple_outcome_same_market(mock_session_db: Session):
+    with pytest.raises(
+        ForbiddenOperationException,
+        match="There are multiple winning outcomes in the same market",
+    ):
+        select_winning_outcomes(
+            session=mock_session_db, winning_outcome_ids=[4, 5, 6, 8], user_id=2
+        )
+
+
 def test_select_winning_outcome(mock_session_db: Session):
     outcome_id = 6
     # create a bet on outcome 6 -> market 3 -> event -> 2

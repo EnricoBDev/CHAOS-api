@@ -2,10 +2,8 @@ import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import validate_call
 from sqlmodel import Session, select
 
-from globals.EEventState import EEventState
 from globals.exceptions import (
     ForbiddenOperationException,
     NotFoundException,
@@ -34,10 +32,10 @@ def create_event(event: EventCreate, session: Session, user_id: int):
 def add_market(market: MarketCreate, session: Session, user_id: int):
     event = get_event_by_id(market.event_id, session)
     if event is None:
-        raise NotFoundException()
+        raise NotFoundException("Parent event was not found")
 
     if event.creator_id != user_id:
-        raise ForbiddenOperationException()
+        raise ForbiddenOperationException("You are not the event creator")
 
     table_market = Market(name=market.name, event_id=market.event_id, outcomes=[])
 
@@ -78,7 +76,19 @@ def get_today_events(
             hour=23, minute=59, second=59, microsecond=0
         ).timestamp()
     )
+    start_of_day = int(
+        datetime_with_offset.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).timestamp()
+    )
+    logger.info(f"End day: {datetime.fromtimestamp(end_of_day, tz=ZoneInfo(timezone))}")
+    logger.info(
+        f"Start day: {datetime.fromtimestamp(start_of_day, tz=ZoneInfo(timezone))}"
+    )
 
+    """
+    # changed this since its better to just show the events for the whole day
+    # even if they have already started
     if day_offset == 0:
         timestamp_with_offset = int(datetime_with_offset.timestamp())
     else:
@@ -87,19 +97,19 @@ def get_today_events(
                 hour=0, minute=0, second=0, microsecond=0
             ).timestamp()
         )
-
+    
     logger.info(
         f"Timestamp: {datetime.fromtimestamp(timestamp_with_offset, tz=ZoneInfo(timezone))} for tz={timezone}"
     )
     logger.info(
         f"End of day: {(datetime.fromtimestamp(end_of_day, tz=ZoneInfo(timezone)))} for tz={timezone}"
     )
+    """
 
     table_events = session.exec(
         select(Event)
-        .where(Event.start_timestamp >= timestamp_with_offset)
+        .where(Event.start_timestamp >= start_of_day)
         .where(Event.start_timestamp <= end_of_day)
-        .where(Event.event_state == EEventState.NEW)
     )
 
     public_events = [

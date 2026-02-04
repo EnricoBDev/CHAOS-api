@@ -5,7 +5,13 @@ import auth
 import auth.routes
 from globals.database import create_db_and_tables
 from models import Bet, Event, Market, Outcome, Transaction, User  # noqa: F401
-from routes import bet_router, event_router, transaction_router, user_router
+from routes import (
+    bet_router,
+    event_router,
+    outcome_router,
+    transaction_router,
+    user_router,
+)
 
 app = FastAPI()
 
@@ -30,6 +36,7 @@ app.include_router(
     transaction_router.router,
 )
 app.include_router(bet_router.router)
+app.include_router(outcome_router.router)
 
 
 @app.on_event("startup")  # ty:ignore[deprecated]

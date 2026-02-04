@@ -65,5 +65,6 @@ def get_today_events(
         )
     except InvalidTokenException:
         raise http_unauthorized_exception("Token is invalid")
+    # TimezoneValidationException is alredy handled by pydantic validation for TimeZoneName
 
     return events

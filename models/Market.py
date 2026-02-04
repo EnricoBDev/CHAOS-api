@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from pydantic import model_validator
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -14,6 +15,12 @@ class MarketBase(SQLModel):
 class MarketCreate(MarketBase):
     outcomes: list["OutcomeCreate"]
     event_id: int = Field(foreign_key="event.id")
+
+    @model_validator(mode="after")
+    def check_outcomes_number(self) -> "MarketCreate":
+        if len(self.outcomes) < 2:
+            raise ValueError("There should be at least two outcomes")
+        return self
 
 
 class Market(MarketBase, table=True):

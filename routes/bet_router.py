@@ -2,7 +2,6 @@ from fastapi import APIRouter
 
 from auth import token
 from auth.security_schema import OAuth2Dep
-from auth.token import get_id_from_token
 from globals.database import SessionDep
 from globals.exceptions import (
     ForbiddenOperationException,

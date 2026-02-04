@@ -58,14 +58,28 @@ def test_create_event(mock_session_db: Session):
 
 
 def test_add_market_fail_event_not_found(mock_session_db: Session):
-    market = MarketCreate(name="test", outcomes=[], event_id=67)
+    market = MarketCreate(
+        name="test",
+        outcomes=[
+            OutcomeCreate(name="outcome1", odds=5),
+            OutcomeCreate(name="outcome2", odds=5),
+        ],
+        event_id=67,
+    )
 
     with pytest.raises(NotFoundException):
         add_market(market=market, session=mock_session_db, user_id=1)
 
 
 def test_add_market_fail_not_creator(mock_session_db: Session):
-    market = MarketCreate(name="test", outcomes=[], event_id=1)
+    market = MarketCreate(
+        name="test",
+        outcomes=[
+            OutcomeCreate(name="outcome1", odds=5),
+            OutcomeCreate(name="outcome2", odds=5),
+        ],
+        event_id=1,
+    )
 
     user_id = 2
 
@@ -110,7 +124,6 @@ def test_add_market(mock_session_db: Session):
         event_id=1,
     )
 
-    # TODO: relationships attributes are not checked by the == operator (check other tests), also when we have to test methods that return Public objects it's not necessary to test the relationship attributes since it's just a call to the mappers and we have tested them already
     assert created_market == expected
     assert created_market.outcomes == expected_outcomes
 
