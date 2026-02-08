@@ -1,9 +1,14 @@
+import logging
+from datetime import datetime, timedelta
+
 import jwt
 from jwt import InvalidTokenError
 from pydantic import BaseModel
 
-from globals.constants import ALGORITHM, JWT_EXP, NOT_SO_SECRET
+from globals.constants import ALGORITHM, JWT_EXP_DAYS, NOT_SO_SECRET
 from globals.exceptions import InvalidTokenException
+
+logger = logging.getLogger("uvicorn.error")
 
 
 class Token(BaseModel):
@@ -13,7 +18,9 @@ class Token(BaseModel):
 
 def create_access_token(data: dict) -> Token:
     to_encode = data.copy()
-    to_encode.update({"exp": JWT_EXP})
+    expire = datetime.now() + timedelta(days=JWT_EXP_DAYS)
+    logger.info(f"Expire timestamp: {expire}")
+    to_encode.update({"exp": int(expire.timestamp())})
     encoded_jwt = jwt.encode(to_encode, NOT_SO_SECRET, algorithm=ALGORITHM)
     return Token(access_token=encoded_jwt, token_type="bearer")
 

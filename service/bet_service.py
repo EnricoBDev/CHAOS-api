@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from sqlmodel import Session, select
+from sqlmodel import Session, desc, select
 
 from globals.EEventState import EEventState
-from globals.exceptions import ForbiddenOperationException
+from globals.exceptions import ForbiddenOperationException, NotFoundException
 from models import Bet, BetCreate, Outcome, Transaction, User
 
 
@@ -74,6 +74,40 @@ def place_bet(session: Session, user_id: int, bet: BetCreate):
     session.commit()
 
 
+def remove_bet(session: Session, bet_id: int, user_id: int):
+    # get the bet from bet_id
+    bet = session.exec(select(Bet).where(Bet.id == bet_id)).first()
+
+    if bet is None:
+        raise NotFoundException("Bet not found")
+
+    # get the latest negative amount transaction
+    amount = _get_bet_amount(session=session, bet_id=bet_id, user_id=user_id)
+
+    # set all transactions foreign key to that bet to NULL
+    _make_transactions_orphans(session=session, bet_id=bet_id)
+
+    # delete the bet
+    session.delete(bet)
+
+    # create a new transaction for refunding with opposite amount to the latest negative transaction
+    event = bet.outcome.market.event
+    market = bet.outcome.market
+    outcome = bet.outcome
+
+    refund_transaction = Transaction(
+        timestamp=int(datetime.now().timestamp()),
+        description=f"Removed bet on {event.name} -> {market.name} {outcome.name}",
+        amount=-amount,
+        user_id=user_id,
+        bet_id=None,
+        bet=None,
+    )
+
+    session.add(refund_transaction)
+    session.commit()
+
+
 def _check_existent_user_bet_on_outcome(
     outcome: Outcome, user_id: int, session: Session
 ) -> bool:
@@ -105,3 +139,34 @@ def _get_user_balance(session: Session, user_id: int) -> int | None:
         balance += transaction.amount
 
     return balance
+
+
+def _get_bet_amount(session: Session, bet_id: int, user_id: int):
+    statement = (
+        select(Transaction)
+        .join(Bet)
+        .where(Transaction.user_id == user_id)
+        .where(Transaction.bet_id == bet_id)
+        .where(Transaction.amount < 0)
+        .order_by(desc(Transaction.timestamp))
+    )
+
+    transaction = session.exec(statement).first()
+    if transaction is None:
+        raise NotFoundException()
+
+    return transaction.amount
+
+
+def _make_transactions_orphans(session: Session, bet_id: int):
+    # set all transactions' fk bet_id linked to the bet to NULL
+
+    transactions = session.exec(
+        select(Transaction).where(Transaction.bet_id == bet_id)
+    ).all()
+
+    for transaction in transactions:
+        transaction.bet_id = None
+
+    session.add_all(transactions)
+    session.flush()
