@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlmodel import Session, select
+from sqlmodel import Session, asc, select
 
 from globals.exceptions import (
     ForbiddenOperationException,
@@ -110,6 +110,7 @@ def get_today_events(
         select(Event)
         .where(Event.start_timestamp >= start_of_day)
         .where(Event.start_timestamp <= end_of_day)
+        .order_by(asc(Event.start_timestamp))
     )
 
     public_events = [

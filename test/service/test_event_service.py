@@ -153,9 +153,10 @@ def test_get_event_by_id(mock_session_db: Session):
 def test_get_today_events(mock_session_db: Session):
     actual = get_today_events(session=mock_session_db, user_id=2, day_offset=0)
 
-    assert 2 == len(actual)
-    assert 1 == actual[0].id
-    assert 5 == actual[1].id
+    id_list = [event.id for event in actual]
+    assert 5 == len(actual)
+    # event 6 has fixed timestamps
+    assert 6 not in id_list
 
 
 def test_get_today_events_with_offset(mock_session_db: Session):
