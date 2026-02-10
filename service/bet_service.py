@@ -81,6 +81,12 @@ def remove_bet(session: Session, bet_id: int, user_id: int):
     if bet is None:
         raise NotFoundException("Bet not found")
 
+    # check if bet creator is the one removing it
+    if bet.transactions[0].user_id != user_id:
+        raise ForbiddenOperationException(
+            "You cannot remove the bet if you are not the one that placed it"
+        )
+
     # get the latest negative amount transaction
     amount = _get_bet_amount(session=session, bet_id=bet_id, user_id=user_id)
 

@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 import pytest
 from sqlalchemy.dialects.mysql import match
@@ -6,9 +7,9 @@ from sqlalchemy.sql.functions import user
 from sqlalchemy.testing.provision import get_temp_table_name
 from sqlmodel import Session, select
 
-from globals.exceptions import ForbiddenOperationException
+from globals.exceptions import ForbiddenOperationException, NotFoundException
 from models import Bet, BetCreate, Outcome, Transaction
-from service.bet_service import place_bet
+from service.bet_service import place_bet, remove_bet
 
 logger = logging.getLogger(__name__)
 
@@ -107,3 +108,65 @@ def test_place_bet(mock_session_db: Session):
     assert table_bet.transactions[0].id == 3
     assert table_transaction.id == 3
     assert table_transaction.amount == -10
+
+
+def test_remove_bet_not_found(mock_session_db: Session):
+    with pytest.raises(NotFoundException, match="Bet not found"):
+        remove_bet(session=mock_session_db, bet_id=777, user_id=2)
+
+
+def test_remove_bet_user_not_better(mock_session_db: Session):
+    # create a new bet
+    new_transaction = Transaction(
+        id=67,
+        amount=-100,
+        description="test",
+        timestamp=int(datetime.now().timestamp()),
+        bet_id=67,
+        user_id=2,
+    )
+    new_bet = Bet(id=67, outcome_id=17)
+    mock_session_db.add(new_bet)
+    mock_session_db.add(new_transaction)
+
+    with pytest.raises(
+        ForbiddenOperationException,
+        match="You cannot remove the bet if you are not the one that placed it",
+    ):
+        remove_bet(session=mock_session_db, user_id=1, bet_id=67)
+
+
+def test_remove_bet(mock_session_db: Session):
+    # create a new bet
+    new_transaction = Transaction(
+        id=67,
+        amount=-100,
+        description="test",
+        timestamp=int(datetime.now().timestamp()),
+        bet_id=67,
+        user_id=2,
+    )
+    new_bet = Bet(id=67, outcome_id=17)
+    mock_session_db.add(new_bet)
+    mock_session_db.add(new_transaction)
+
+    remove_bet(session=mock_session_db, bet_id=67, user_id=2)
+
+    # the refunded transaction will be the only one with amount=100 on user_id=2
+    refunded_transaction = mock_session_db.exec(
+        select(Transaction)
+        .where(Transaction.amount == 100)
+        .where(Transaction.user_id == 2)
+    ).first()
+
+    logger.info(f"Refunded transaction amount: {refunded_transaction.amount}")  # ty:ignore[possibly-missing-attribute]
+
+    assert refunded_transaction is not None
+
+    # check if the transaction we created earlier has no bet_id
+    mock_session_db.refresh(new_transaction)
+    assert new_transaction.bet_id is None
+
+    # check that there is no bet with id=67
+    deleted_bet = mock_session_db.exec(select(Bet).where(Bet.id == 67)).first()
+    assert deleted_bet is None

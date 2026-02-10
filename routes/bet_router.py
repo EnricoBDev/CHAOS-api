@@ -6,7 +6,9 @@ from globals.database import SessionDep
 from globals.exceptions import (
     ForbiddenOperationException,
     InvalidTokenException,
+    NotFoundException,
     http_forbidden_exception,
+    http_not_found_exception,
     http_unauthorized_exception,
 )
 from models import BetCreate
@@ -72,5 +74,29 @@ def place_bet(session: SessionDep, access_token: OAuth2Dep, bet: BetCreate):
 
     try:
         bet_service.place_bet(session=session, user_id=user_id, bet=bet)
+    except ForbiddenOperationException as e:
+        raise http_forbidden_exception(e.args[0])
+
+
+@router.delete(
+    "/bet",
+    responses={
+        401: {"description": "Invalid token"},
+        404: {"description": "Bet not found"},
+        403: {
+            "description": "You cannot remove the bet if you are not the one that placed it"
+        },
+    },
+)
+def delete_bet(session: SessionDep, access_token: OAuth2Dep, bet_id: int):
+    try:
+        user_id = token.get_id_from_token(access_token)
+    except InvalidTokenException:
+        raise http_forbidden_exception("Token is invalid")
+
+    try:
+        bet_service.remove_bet(session=session, bet_id=bet_id, user_id=user_id)
+    except NotFoundException as e:
+        raise http_not_found_exception(e.args[0])
     except ForbiddenOperationException as e:
         raise http_forbidden_exception(e.args[0])
