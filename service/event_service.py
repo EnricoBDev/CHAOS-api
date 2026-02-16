@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlmodel import Session, asc, select
 
+from globals.EEventState import EEventState
 from globals.exceptions import (
     ForbiddenOperationException,
     NotFoundException,
@@ -17,6 +18,7 @@ from models import (
     Market,
     MarketCreate,
     Outcome,
+    Transaction,
 )
 
 logger = logging.getLogger("uvicorn.error")
@@ -30,7 +32,7 @@ def create_event(event: EventCreate, session: Session, user_id: int):
 
 
 def add_market(market: MarketCreate, session: Session, user_id: int):
-    event = get_event_by_id(market.event_id, session)
+    event = _get_event_by_id(market.event_id, session)
     if event is None:
         raise NotFoundException("Parent event was not found")
 
@@ -44,7 +46,7 @@ def add_market(market: MarketCreate, session: Session, user_id: int):
     session.refresh(table_market)
 
     table_outcomes = [
-        Outcome(name=outcome.name, odds=outcome.odds, market_id=table_market.id)
+        Outcome(name=outcome.name, odds=outcome.odds, market_id=table_market.id)  # ty:ignore[invalid-argument-type]
         for outcome in market.outcomes
     ]
 
@@ -120,7 +122,48 @@ def get_today_events(
     return public_events
 
 
-def get_event_by_id(event_id: int, session: Session) -> Event | None:
+def refund_event(session: Session, user_id: int, event_id: int):
+    event = _get_event_by_id(session=session, event_id=event_id)
+
+    if event is None:
+        raise NotFoundException("Event was not found")
+
+    if event.creator_id != user_id:
+        raise ForbiddenOperationException("You are not the event creator")
+
+    if event.end_timestamp > int(datetime.now().timestamp()):
+        raise ForbiddenOperationException("The event is not over yet")
+
+    event.event_state = EEventState.REFUNDED
+    session.add(event)
+    session.flush()
+
+    _refund_bets(session=session, event=event)
+    session.commit()
+
+
+def _get_event_by_id(event_id: int, session: Session) -> Event | None:
     result = session.exec(select(Event).where(Event.id == event_id)).first()
 
     return result
+
+
+def _refund_bets(session: Session, event: Event):
+    for market in event.markets:
+        for outcome in market.outcomes:
+            for bet in outcome.bets:
+                negative_transactions = filter(
+                    lambda obj: obj.amount < 0, bet.transactions
+                )
+                last_negative_transaction = max(
+                    negative_transactions, key=lambda obj: obj.timestamp
+                )
+                negative_amount = last_negative_transaction.amount
+                new_transaction = Transaction(
+                    timestamp=int(datetime.now().timestamp()),
+                    bet_id=bet.id,
+                    user_id=last_negative_transaction.user_id,
+                    amount=-negative_amount,
+                    description=f"Refund {-negative_amount} points for {event.name} -> {outcome.market.name} {outcome.name}",
+                )
+                session.add(new_transaction)

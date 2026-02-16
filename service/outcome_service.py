@@ -48,9 +48,17 @@ def select_winning_outcomes(
                 "Cannot settle an event that has not finished"
             )
 
+        # TODO: add test for this case
+        if outcome_event.event_state != EEventState.NEW:
+            raise ForbiddenOperationException(
+                "The event has already been settled/refunded"
+            )
+
         _set_event_to_settled(session=session, outcome_id=outcome_id)
         _set_is_winning(session=session, outcome_id=outcome_id)
         _pay_bets(session=session, outcome_id=outcome_id)
+
+    session.commit()
 
 
 def _set_event_to_settled(session: Session, outcome_id: int):
@@ -62,7 +70,7 @@ def _set_event_to_settled(session: Session, outcome_id: int):
     event.event_state = EEventState.SETTLED
 
     session.add(event)
-    session.commit()
+    session.flush()
 
 
 def _set_is_winning(session: Session, outcome_id: int):
@@ -80,7 +88,7 @@ def _set_is_winning(session: Session, outcome_id: int):
             outcome.is_winning = False
 
     session.add(market)
-    session.commit()
+    session.flush()
 
 
 def _pay_bets(session: Session, outcome_id: int):
@@ -102,7 +110,7 @@ def _pay_bets(session: Session, outcome_id: int):
         )
         session.add(transaction)
 
-    session.commit()
+    session.flush()
 
 
 def _get_bet_amount(session: Session, bet: Bet) -> int:

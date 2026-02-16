@@ -19,9 +19,9 @@ from models import (
     OutcomeCreate,
 )
 from service.event_service import (
+    _get_event_by_id,
     add_market,
     create_event,
-    get_event_by_id,
     get_today_events,
 )
 from test.conftest import get_current_timestamp
@@ -129,7 +129,7 @@ def test_add_market(mock_session_db: Session):
 
 
 def test_get_event_by_id_not_found(mock_session_db: Session):
-    actual = get_event_by_id(event_id=10000, session=mock_session_db)
+    actual = _get_event_by_id(event_id=10000, session=mock_session_db)
 
     assert actual is None
 
@@ -145,7 +145,7 @@ def test_get_event_by_id(mock_session_db: Session):
         event_state=EEventState.NEW,
     )
 
-    actual = get_event_by_id(event_id=6, session=mock_session_db)
+    actual = _get_event_by_id(event_id=6, session=mock_session_db)
 
     assert expected == actual
 
