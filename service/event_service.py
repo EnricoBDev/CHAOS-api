@@ -139,6 +139,8 @@ def refund_event(session: Session, user_id: int, event_id: int):
     session.flush()
 
     _refund_bets(session=session, event=event)
+    _delete_bets(session=session, event=event)
+
     session.commit()
 
 
@@ -152,8 +154,8 @@ def _refund_bets(session: Session, event: Event):
     for market in event.markets:
         for outcome in market.outcomes:
             for bet in outcome.bets:
-                negative_transactions = filter(
-                    lambda obj: obj.amount < 0, bet.transactions
+                negative_transactions = list(
+                    filter(lambda obj: obj.amount < 0, bet.transactions)
                 )
                 last_negative_transaction = max(
                     negative_transactions, key=lambda obj: obj.timestamp
@@ -161,9 +163,19 @@ def _refund_bets(session: Session, event: Event):
                 negative_amount = last_negative_transaction.amount
                 new_transaction = Transaction(
                     timestamp=int(datetime.now().timestamp()),
-                    bet_id=bet.id,
+                    bet_id=None,
                     user_id=last_negative_transaction.user_id,
                     amount=-negative_amount,
                     description=f"Refund {-negative_amount} points for {event.name} -> {outcome.market.name} {outcome.name}",
                 )
                 session.add(new_transaction)
+
+
+def _delete_bets(session: Session, event: Event):
+    for market in event.markets:
+        for outcome in market.outcomes:
+            for bet in outcome.bets:
+                for transaction in bet.transactions:
+                    transaction.bet_id = None
+                    session.add(transaction)
+                session.delete(bet)

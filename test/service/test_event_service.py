@@ -1,8 +1,10 @@
+import logging
+import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
-from sqlmodel import Session, select
+from sqlmodel import Session, or_, select
 
 from globals.EEventState import EEventState
 from globals.exceptions import (
@@ -11,20 +13,26 @@ from globals.exceptions import (
     TimezoneValidationException,
 )
 from models import (
+    Bet,
     Event,
     EventCreate,
     Market,
     MarketCreate,
     Outcome,
     OutcomeCreate,
+    Transaction,
+    User,
 )
 from service.event_service import (
     _get_event_by_id,
     add_market,
     create_event,
     get_today_events,
+    refund_event,
 )
 from test.conftest import get_current_timestamp
+
+logger = logging.getLogger(__name__)
 
 
 def test_create_event(mock_session_db: Session):
@@ -268,3 +276,72 @@ def test_get_today_events_tz(mock_session_db: Session):
         assert 100 not in actual_ids
 
     assert 101 not in actual_ids
+
+
+def test_refund_event_not_found(mock_session_db: Session):
+    with pytest.raises(NotFoundException, match="Event was not found"):
+        refund_event(session=mock_session_db, user_id=1, event_id=111111)
+
+
+def test_refund_event_user_not_creator(mock_session_db: Session):
+    with pytest.raises(
+        ForbiddenOperationException, match="You are not the event creator"
+    ):
+        refund_event(session=mock_session_db, user_id=2, event_id=1)
+
+
+def test_refund_event_not_over_yet(mock_session_db: Session):
+    with pytest.raises(ForbiddenOperationException, match="The event is not over yet"):
+        refund_event(session=mock_session_db, user_id=1, event_id=1)
+
+
+def test_refund_event(mock_session_db: Session):
+    # lets place a bet on markets 3 and 4
+    bet_1 = Bet(id=1000, outcome_id=6)
+    bet_2 = Bet(id=1001, outcome_id=8)
+    timestamp_now = int(datetime.now().timestamp())
+    transaction_1 = Transaction(
+        id=1000,
+        description="test",
+        amount=-100,
+        timestamp=timestamp_now,
+        bet_id=1000,
+        user_id=2,
+    )
+    transaction_2 = Transaction(
+        id=1001,
+        description="test",
+        amount=-100,
+        timestamp=timestamp_now,
+        bet_id=1001,
+        user_id=2,
+    )
+    mock_session_db.add(bet_1)
+    mock_session_db.add(bet_2)
+    mock_session_db.add(transaction_1)
+    mock_session_db.add(transaction_2)
+
+    time.sleep(1)  # force a new timestamp
+
+    refund_event(session=mock_session_db, user_id=1, event_id=2)
+
+    event = mock_session_db.exec(select(Event).where(Event.id == 2)).one()
+
+    assert event.event_state == EEventState.REFUNDED
+
+    user = mock_session_db.exec(select(User).where(User.id == 2)).one()
+    transactions = sorted(
+        user.transactions, key=lambda obj: obj.timestamp, reverse=True
+    )
+
+    logger.info(f"First refund: {transactions[0]}")
+    logger.info(f"Second refund: {transactions[1]}")
+
+    assert transactions[0].amount == 100
+    assert transactions[1].amount == 100
+
+    deleted_bets = mock_session_db.exec(
+        select(Bet).where(or_(Bet.id == 1000, Bet.id == 1001))
+    ).all()
+
+    assert len(deleted_bets) == 0

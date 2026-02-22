@@ -2,9 +2,6 @@ import logging
 from datetime import datetime
 
 import pytest
-from sqlalchemy.dialects.mysql import match
-from sqlalchemy.sql.functions import user
-from sqlalchemy.testing.provision import get_temp_table_name
 from sqlmodel import Session, select
 
 from globals.exceptions import ForbiddenOperationException, NotFoundException
@@ -159,7 +156,7 @@ def test_remove_bet(mock_session_db: Session):
         .where(Transaction.user_id == 2)
     ).first()
 
-    logger.info(f"Refunded transaction amount: {refunded_transaction.amount}")  # ty:ignore[possibly-missing-attribute]
+    logger.info(f"Refunded transaction amount: {refunded_transaction.amount}")  # ty:ignore[unresolved-attribute]
 
     assert refunded_transaction is not None
 
