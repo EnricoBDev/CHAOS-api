@@ -44,6 +44,15 @@ def test_select_winning_outcome_multiple_outcome_same_market(mock_session_db: Se
         )
 
 
+def test_select_winning_outcome_event_not_new(mock_session_db: Session):
+    with pytest.raises(
+        ForbiddenOperationException, match="The event has already been settled/refunded"
+    ):
+        select_winning_outcomes(
+            session=mock_session_db, winning_outcome_ids=[17], user_id=1
+        )
+
+
 def test_select_winning_outcome(mock_session_db: Session):
     outcome_id = 6
     # create a bet on outcome 6 -> market 3 -> event -> 2

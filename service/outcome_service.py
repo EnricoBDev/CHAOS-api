@@ -30,7 +30,7 @@ def select_winning_outcomes(
         session=session, outcome_id_list=winning_outcome_ids
     ):
         raise ForbiddenOperationException(
-            "There are multiple winning outcomes in the same market"
+            "There are multiple winning outcomes in the same market, there can only be one for each market"
         )
 
     for outcome_id in winning_outcome_ids:

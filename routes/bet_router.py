@@ -83,9 +83,7 @@ def place_bet(session: SessionDep, access_token: OAuth2Dep, bet: BetCreate):
     responses={
         401: {"description": "Invalid token"},
         404: {"description": "Bet not found"},
-        403: {
-            "description": "You cannot remove the bet if you are not the one that placed it"
-        },
+        403: {"description": "Bad request"},
     },
 )
 def delete_bet(session: SessionDep, access_token: OAuth2Dep, bet_id: int):

@@ -82,15 +82,11 @@ def get_today_events(
                     "examples": {
                         "event_not_ended": {
                             "summary": "The event has not ended yet",
-                            "value": {
-                                "detail": "You are trying to refund bets on an event that has not ended yet"
-                            },
+                            "value": {"detail": "The event is not over yet"},
                         },
                         "user_not_creator": {
                             "summary": "The current user is not the event creator",
-                            "value": {
-                                "detail": "You are trying to refund bets on an event that you did not create"
-                            },
+                            "value": {"detail": "You are not the event creator"},
                         },
                     }
                 }
