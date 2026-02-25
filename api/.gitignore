@@ -14,4 +14,7 @@ wheels/
 
 specifica_repository.md 
 database_test.db
+data/
 .coverage
+
+.env

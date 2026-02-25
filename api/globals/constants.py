@@ -1,12 +1,17 @@
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=".env")
+
 # db
-DB_URL = "sqlite:///database_test.db"
-SQL_ECHO = False
+DB_URL = "sqlite:///data/database.db"
+SQL_ECHO = bool(os.getenv("SQL_ECO"))
 
 # user_service
-INITIAL_POINTS = 1000
+INITIAL_POINTS = int(os.getenv("INITIAL_POINTS"))  # ty:ignore[invalid-argument-type]
 
 # auth
-# TODO: remove hardcoded secret
-NOT_SO_SECRET = "sesso"
-ALGORITHM = "HS256"
-JWT_EXP_DAYS = 1
+SECRET = os.getenv("SECRET")
+ALGORITHM = os.getenv("ALGORITHM")
+JWT_EXP_DAYS = int(os.getenv("JWT_EXP_DAYS"))  # ty:ignore[invalid-argument-type]

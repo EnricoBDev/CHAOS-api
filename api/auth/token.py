@@ -5,7 +5,7 @@ import jwt
 from jwt import InvalidTokenError
 from pydantic import BaseModel
 
-from globals.constants import ALGORITHM, JWT_EXP_DAYS, NOT_SO_SECRET
+from globals.constants import ALGORITHM, JWT_EXP_DAYS, SECRET
 from globals.exceptions import InvalidTokenException
 
 logger = logging.getLogger("uvicorn.error")
@@ -21,13 +21,13 @@ def create_access_token(data: dict) -> Token:
     expire = datetime.now() + timedelta(days=JWT_EXP_DAYS)
     logger.info(f"Expire timestamp: {expire}")
     to_encode.update({"exp": int(expire.timestamp())})
-    encoded_jwt = jwt.encode(to_encode, NOT_SO_SECRET, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, SECRET, algorithm=ALGORITHM)
     return Token(access_token=encoded_jwt, token_type="bearer")
 
 
 def get_id_from_token(token: str) -> int:
     try:
-        payload: dict = jwt.decode(token, NOT_SO_SECRET, algorithms=[ALGORITHM])
+        payload: dict = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
     except InvalidTokenError:
         raise InvalidTokenException()
 
