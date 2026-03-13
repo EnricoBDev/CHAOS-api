@@ -27,7 +27,7 @@ def create_access_token(data: dict) -> Token:
 
 def get_id_from_token(token: str) -> int:
     try:
-        payload: dict = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
+        payload: dict = jwt.decode(token, SECRET, algorithms=ALGORITHM)
     except InvalidTokenError:
         raise InvalidTokenException()
 

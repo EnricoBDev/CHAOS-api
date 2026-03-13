@@ -12,6 +12,6 @@ SQL_ECHO = bool(os.getenv("SQL_ECO"))
 INITIAL_POINTS = int(os.getenv("INITIAL_POINTS"))  # ty:ignore[invalid-argument-type]
 
 # auth
-SECRET = os.getenv("SECRET")
-ALGORITHM = os.getenv("ALGORITHM")
+SECRET = str(os.getenv("SECRET"))
+ALGORITHM = str(os.getenv("ALGORITHM"))
 JWT_EXP_DAYS = int(os.getenv("JWT_EXP_DAYS"))  # ty:ignore[invalid-argument-type]

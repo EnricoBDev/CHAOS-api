@@ -1,0 +1,33 @@
+server {
+    listen 80;
+    
+    server_name ${DOMAIN};
+
+    auth_basic ${BASIC_AUTH};
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server{
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    auth_basic ${BASIC_AUTH};
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    location / {
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Url-Scheme $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Authorization "Bearer $http_x_chaos_auth";
+        proxy_set_header X-CHAOS-Auth "";
+        proxy_set_header Host $host;
+        proxy_pass http://api:8000; 
+    }
+}
