@@ -24,7 +24,7 @@ To configure the backend services, create a `.env` file in the `backend/` direct
 | Variable | Description | Example |
 | :--- | :--- | :--- |
 | `DOMAIN` | Your full domain name (for SSL and Nginx). | `example.duckdns.org` |
-| `BASIC_AUTH` | Enables Basic Auth if set (e.g., "Restricted Area"). Set to `off` to disable. | `Restricted Area` |
+| `BASIC_AUTH` | Enables Basic Auth if set. Set to `off` to disable, any other string will enable it. | `Restricted Area` |
 | `STAGING` | Use `1` for Certbot staging (test) mode, `0` for production. | `1` |
 | `CERTBOT_EMAIL` | Email for Let's Encrypt notifications. | `me@example.com` |
 | `DUCKDNS_TOKEN` | Your DuckDNS API token (if using DuckDNS). | `your-token-here` |

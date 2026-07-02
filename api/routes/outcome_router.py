@@ -18,6 +18,8 @@ router = APIRouter()
 
 @router.post(
     "/winning-outcome",
+    summary="Select winning outcomes",
+    description="Select the winning outcomes for a finished event and settle all associated bets. Only the event creator can perform this action.",
     responses={
         401: {"description": "Invalid token"},
         404: {"description": "Outcome not found"},
@@ -46,6 +48,25 @@ router = APIRouter()
                 }
             },
         },
+    },
+    openapi_extra={
+        "x-code-samples": [
+            {
+                "lang": "cURL",
+                "label": "cURL",
+                "source": "curl -X POST \"https://api.example.com/winning-outcome\" \\\n     -H \"Content-Type: application/json\" \\\n     -H \"X-CHAOS-Auth: <your_token>\" \\\n     -d '[1, 5, 12]'",
+            },
+            {
+                "lang": "Python",
+                "label": "Python (requests)",
+                "source": "import requests\n\nurl = \"https://api.example.com/winning-outcome\"\nheaders = {\"X-CHAOS-Auth\": \"<your_token>\"}\npayload = [1, 5, 12]\n\nresponse = requests.post(url, headers=headers, json=payload)\nprint(response.status_code)",
+            },
+            {
+                "lang": "Dart",
+                "label": "Dart (Dio)",
+                "source": "import 'package:dio/dio.dart';\n\nvoid selectWinningOutcomes() async {\n  var dio = Dio();\n  var payload = [1, 5, 12];\n\n  var response = await dio.post('https://api.example.com/winning-outcome', \n    data: payload,\n    options: Options(headers: {'X-CHAOS-Auth': '<your_token>'}),\n  );\n  print(response.statusCode);\n}",
+            },
+        ]
     },
 )
 def select_winning_outcomes(
